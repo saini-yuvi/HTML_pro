@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A simple, responsive task tracker built with HTML, CSS and JavaScript.">
+  <title>TaskFlow — Simple Task Tracker</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(135deg, #e9efff, #f8faff);
+      color: #1f2937;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 48px 16px;
+    }
+    .app {
+      width: 100%;
+      max-width: 620px;
+      background: #fff;
+      border-radius: 18px;
+      padding: 30px;
+      box-shadow: 0 16px 45px rgba(35, 55, 100, .12);
+    }
+    .topline { color: #5367d8; font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+    h1 { margin: 8px 0; font-size: 32px; }
+    .subtitle { color: #6b7280; margin: 0 0 24px; line-height: 1.5; }
+    .entry { display: flex; gap: 10px; }
+    input {
+      flex: 1; min-width: 0; padding: 14px 15px;
+      border: 1px solid #d8deeb; border-radius: 10px; font-size: 15px;
+      outline: none;
+    }
+    input:focus { border-color: #5367d8; box-shadow: 0 0 0 3px rgba(83,103,216,.12); }
+    button {
+      border: 0; border-radius: 10px; padding: 0 18px;
+      background: #5367d8; color: white; font-size: 14px;
+      font-weight: 700; cursor: pointer;
+    }
+    button:hover { background: #4054c5; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 24px 0 12px; }
+    .count { color: #6b7280; font-size: 13px; }
+    .clear { background: transparent; color: #5367d8; padding: 8px; }
+    .clear:hover { background: #f0f2ff; color: #4054c5; }
+    ul { list-style: none; margin: 0; padding: 0; }
+    li {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 12px; border: 1px solid #edf0f6;
+      border-radius: 11px; margin-top: 9px;
+    }
+    li input[type="checkbox"] { flex: 0 0 auto; width: 18px; height: 18px; accent-color: #5367d8; }
+    .task-text { flex: 1; overflow-wrap: anywhere; }
+    li.done .task-text { color: #9ca3af; text-decoration: line-through; }
+    .delete {
+      background: transparent; color: #9ca3af; font-size: 18px;
+      padding: 4px 8px; line-height: 1;
+    }
+    .delete:hover { background: #fff0f0; color: #dc2626; }
+    .empty { text-align: center; color: #9ca3af; padding: 28px 10px; font-size: 14px; }
+    footer { border-top: 1px solid #edf0f6; margin-top: 24px; padding-top: 16px; color: #9ca3af; font-size: 12px; text-align: center; }
+    @media (max-width: 480px) {
+      .app { padding: 22px 18px; }
+      h1 { font-size: 27px; }
+      .entry { flex-direction: column; }
+      .entry button { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="topline">Your personal productivity space</div>
+    <h1>TaskFlow</h1>
+    <p class="subtitle">Keep your day organised. Add a task, tick it off when you're done, and make progress one step at a time.</p>
+
+    <form class="entry" id="taskForm">
+      <input id="taskInput" type="text" placeholder="What do you need to do?" maxlength="120" autocomplete="off" required>
+      <button type="submit">Add task</button>
+    </form>
+
+    <div class="toolbar">
+      <span class="count" id="taskCount">0 tasks</span>
+      <button class="clear" id="clearCompleted" type="button">Clear completed</button>
+    </div>
+
+    <ul id="taskList" aria-live="polite"></ul>
+    <div class="empty" id="emptyMessage">No tasks yet. Add your first task above!</div>
+    <footer>Built with HTML, CSS and vanilla JavaScript · Tasks are saved in this browser</footer>
+  </main>
+
+  <script>
+    const form = document.getElementById('taskForm');
+    const input = document.getElementById('taskInput');
+    const list = document.getElementById('taskList');
+    const count = document.getElementById('taskCount');
+    const emptyMessage = document.getElementById('emptyMessage');
+    const clearCompletedButton = document.getElementById('clearCompleted');
+
+    let tasks = [];
+    try {
+      tasks = JSON.parse(localStorage.getItem('taskflow-tasks')) || [];
+    } catch {
+      tasks = [];
+    }
+
+    function saveTasks() {
+      localStorage.setItem('taskflow-tasks', JSON.stringify(tasks));
+    }
+
+    function renderTasks() {
+      list.innerHTML = '';
+      tasks.forEach(task => {
+        const item = document.createElement('li');
+        if (task.completed) item.classList.add('done');
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = task.completed;
+        checkbox.setAttribute('aria-label', 'Mark task as completed');
+        checkbox.addEventListener('change', () => {
+          task.completed = checkbox.checked;
+          saveTasks();
+          renderTasks();
+        });
+
+        const text = document.createElement('span');
+        text.className = 'task-text';
+        text.textContent = task.text;
+
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'delete';
+        deleteButton.type = 'button';
+        deleteButton.textContent = '×';
+        deleteButton.setAttribute('aria-label', 'Delete task');
+        deleteButton.addEventListener('click', () => {
+          tasks = tasks.filter(item => item.id !== task.id);
+          saveTasks();
+          renderTasks();
+        });
+
+        item.append(checkbox, text, deleteButton);
+        list.appendChild(item);
+      });
+
+      const remaining = tasks.filter(task => !task.completed).length;
+      count.textContent = `${remaining} remaining · ${tasks.length} total`;
+      emptyMessage.hidden = tasks.length > 0;
+    }
+
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+
+      tasks.push({
+        id: Date.now() + Math.random(),
+        text,
+        completed: false
+      });
+      saveTasks();
+      renderTasks();
+      input.value = '';
+      input.focus();
+    });
+
+    clearCompletedButton.addEventListener('click', () => {
+      tasks = tasks.filter(task => !task.completed);
+      saveTasks();
+      renderTasks();
+    });
+
+    renderTasks();
+  </script>
+</body>
+</html>
